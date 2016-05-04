@@ -1,0 +1,85 @@
+---
+title: "PracticalMachineLearning"
+author: "Preyanshu"
+date: "May 3, 2016"
+output: html_document
+---
+
+### DATA LOADING
+
+#####Reading the *data* and loading caret library
+
+```{r}
+library(caret)
+setwd("C:\\Users\\preygupta\\Documents\\R Programmming Coursera")
+pmlTrain<-read.csv("pml-training.csv", header=T, na.strings=c("NA", "#DIV/0!",""))
+pmlTest<-read.csv("pml-testing.csv", header=T, na.string=c("NA", "#DIV/0!",""))
+
+```
+
+
+### DATA CLEANING and PRE-PROCESSING
+
+#####Removing those columns where more than 90% of the data is missing.
+
+```{r}
+
+pmlTrain_New <-  data.frame(matrix(nrow = nrow(pmlTrain), ncol = 0))
+
+for(i in c(1:ncol(pmlTrain)))
+{
+  if(sum(is.na(pmlTrain[i]))/nrow(pmlTrain) <= 0.900)
+  {
+    pmlTrain_New <- cbind(pmlTrain_New,pmlTrain[i])
+  }
+
+}
+
+pmlTrain <- pmlTrain_New
+```
+#####Removing the columns having  ID, Timestamp and Window information.
+```{r}
+pmlTrain<-pmlTrain[,-c(1:8)]
+```
+
+#####checking if the any NA's are left in the dataset.
+
+```{r}
+which(is.na(pmlTrain)) # Checking if any NA value is left
+
+```
+
+#####Similarly only retaining the columns in the test set(pmlTest) which we have kept in training set(pmlTrain)
+```{r}
+pmlTest<- pmlTest[,names(pmlTrain[,-c(52)])]
+```
+
+###DATA PARTITIONING AND MACHINE LEARNING
+
+Before we can move forward with data analysis, we split the training set into two for cross validation purposes. We randomly subsample 60% of the set for training purposes (actual model building), while the 40% remainder will be used only for testing, evaluation and accuracy measurement.
+
+```{R}
+inTrain <-createDataPartition(pmlTrain$classe,p=0.6,list = F)
+myTraining <- pmlTrain[inTrain,]
+myTesting <- pmlTrain[-inTrain,]
+```
+
+Results and Conclusion
+We obtained a accuarcy of 99.07% with 5 fold cross validation. Kappa value of  0.99 was obtained. Sensitivity and Specificity of close to 98-99% was obtained for all the classes i.e. (A,B,C,D,E).
+
+```{r}
+set.seed(123)
+control<-trainControl(method="cv", number=5, allowParallel=T, verbose=T)
+rffit<-train(classe~.,data=myTraining, method="rf", trControl=control, verbose=F)
+
+predrf<-predict(rffit, newdata=myTesting)
+
+# We can use caret's confusionMatrix() function to get an idea of the accuracy:
+confusionMatrix(predrf, myTesting$classe)
+
+
+pred_output<-predict(rffit, newdata=pmlTest)
+# Output for the prediction of the 20 cases provided
+pred_output
+```
+
